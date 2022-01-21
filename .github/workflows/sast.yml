@@ -1,0 +1,412 @@
+name: "SAST"
+
+# Below makes this action run when code is push to the main branch or a pull_requests gets merged with the main branch.
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ main, master ]
+  workflow_dispatch:
+  #Actions can be scheduled as well, below is an example
+  #schedule:
+    #- cron: '18 0 * * 4'
+
+
+jobs:
+  # Linguist detects which languages exist in the repo.
+  linguist-job:
+    name: Linguist
+    runs-on: ubuntu-latest
+    env:
+      HAS_CPP: false
+      HAS_CSHARP: false
+      HAS_GO: false
+      HAS_JAVA: false
+      HAS_JS: false
+      HAS_MOBILE: false
+      HAS_PHP: false
+      HAS_PYTHON: false
+      HAS_RUBY: false
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+        
+      - name: Run linguist  
+        uses: fabasoad/linguist-action@main
+        id: linguist
+        with:
+          path: './'
+          percentage: true
+       
+      # If C or C++ is detected HAS_CPP turns to 'true'
+      - name: Contains Cpp
+        if: | 
+          contains(steps.linguist.outputs.data, '"C++"') || 
+          contains(steps.linguist.outputs.data, '"C"')
+        run: echo "HAS_CPP=true" >> $GITHUB_ENV
+      
+      # If C# is detected HAS_CSHARP turns to 'true'
+      - name: Contains C#
+        if: contains(steps.linguist.outputs.data, '"C#"')
+        run: echo "HAS_CSHARP=true" >> $GITHUB_ENV
+      
+      # And so on...
+      - name: Contains Go
+        if: contains(steps.linguist.outputs.data, '"Go"')
+        run: echo "HAS_GO=true" >> $GITHUB_ENV
+      
+      # And so forth..
+      - name: Contains Java
+        if: contains(steps.linguist.outputs.data, '"Java"')
+        run: echo "HAS_JAVA=true" >> $GITHUB_ENV
+     
+      # CodeQL for JavaScript scans JS, TS, HTML and more.
+      - name: Contains JS
+        if: |
+          contains(steps.linguist.outputs.data, '"JavaScript"') ||
+          contains(steps.linguist.outputs.data, '"HTML"') ||
+          contains(steps.linguist.outputs.data, '"Vue"') ||
+          contains(steps.linguist.outputs.data, '"JSON"') ||
+          contains(steps.linguist.outputs.data, '"YAML"') ||
+          contains(steps.linguist.outputs.data, '"RAML"') ||
+          contains(steps.linguist.outputs.data, '"XML"') ||
+          contains(steps.linguist.outputs.data, '"TypeScript"') ||
+          contains(steps.linguist.outputs.data, '"TSX"')
+        run: echo "HAS_JS=true" >> $GITHUB_ENV
+      
+      # Languages for mobile are all grouped together here
+      - name: Contains Mobile
+        if: |
+          contains(steps.linguist.outputs.data, '"Java"') ||
+          contains(steps.linguist.outputs.data, '"Kotlin"') ||
+          contains(steps.linguist.outputs.data, '"Objective-C"') ||
+          contains(steps.linguist.outputs.data, '"Swift"')
+        run: echo "HAS_MOBILE=true" >> $GITHUB_ENV
+      
+      - name: Contains PHP
+        if: contains(steps.linguist.outputs.data, '"PHP"')
+        run: echo "HAS_PHP=true" >> $GITHUB_ENV
+      
+      - name: Contains Python
+        if: contains(steps.linguist.outputs.data, '"Python"')
+        run: echo "HAS_PYTHON=true" >> $GITHUB_ENV
+      
+      - name: Contains Ruby
+        if: contains(steps.linguist.outputs.data, '"Ruby"')
+        run: echo "HAS_RUBY=true" >> $GITHUB_ENV
+    
+    # Once the variables are changed, its outputted for other jobs to use
+    outputs:
+      has_cpp: ${{ env.HAS_CPP }}
+      has_csharp: ${{ env.HAS_CSHARP }}
+      has_go: ${{ env.HAS_GO }}
+      has_java: ${{ env.HAS_JAVA }}
+      has_js: ${{ env.HAS_JS }}
+      has_mobile: ${{ env.HAS_MOBILE }}
+      has_php: ${{ env.HAS_PHP }}
+      has_python: ${{ env.HAS_PYTHON }}
+      has_ruby: ${{ env.HAS_RUBY }}
+
+#=================================================C/C++=================================================#
+
+  # If C or C++ is detected by linguist this job, CodeQL for C/C++, will run
+  codeql-cpp-job:
+    name: CodeQL (C/C++)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_cpp == 'true' 
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'cpp'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+
+    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
+    # If this step fails, then you should remove it and run the build manually (see below)
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v1
+
+    # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
+    #    and modify them (or add more) to build your code if your project
+    #    uses a compiled language
+
+    #- run: |
+    #   make bootstrap
+    #   make release
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+
+#=================================================CSHARP=================================================#
+  
+  # If C# is detected, this job will run and so on and so forth..
+  codeql-csharp-job:
+    name: CodeQL (C#)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_csharp == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'csharp'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+
+    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
+    # If this step fails, then you should remove it and run the build manually (see below)
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v1
+
+    # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
+    #    and modify them (or add more) to build your code if your project
+    #    uses a compiled language
+
+    #- run: |
+    #   make bootstrap
+    #   make release
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+
+#=================================================GO=================================================#
+
+  codeql-go-job:
+    name: CodeQL (Go)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_go == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'go'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+
+#=================================================JAVA=================================================#
+
+  codeql-java-job:
+    name: CodeQL (Java)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_java == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps: 
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'java'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+
+    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
+    # If this step fails, then you should remove it and run the build manually (see below)
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v1
+
+    # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
+    #    and modify them (or add more) to build your code if your project
+    #    uses a compiled language
+
+    #- run: |
+    #   make bootstrap
+    #   make release
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+
+#==============================================JAVASCRIPT/TYPESCRIPT==============================================#
+  
+  # If JavaScript or TypeScript is detected by linguist this job, CodeQL for JS, will run
+  codeql-js-job:
+    name: CodeQL (JS)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_js == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'javascript'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+    
+#=================================================PYTHON=================================================#
+
+  # If Python is detected by linguist this job, CodeQL for Python, will run
+  codeql-python-job:
+    name: CodeQL (Python)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_python == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'python'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+
+#=================================================RUBY=================================================#
+
+# If Ruby is detected by linguist this job, CodeQL for Ruby, will run
+  codeql-ruby-job:
+    name: CodeQL (Ruby)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_ruby == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        # The language is indicated here for CodeQL and is checked for security and QA issues
+        languages: 'ruby'
+        queries: +security-and-quality
+        # Uncomment the below line to apply configuration file found in this repo to this github action
+        # config-file: ./.github/codeql/codeql-config.yml
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
+
+#=================================================PHP=================================================#
+
+# If PHP is detected by linguist this job, Psalm, will run on the source code.
+  psalm-job:
+    name: Psalm (PHP)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_php == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      # Below code checks if the neccessary directories, for Psalm to work, exists
+      - name: Check if composer exist
+        run: |
+          (test -d src && echo src exists) || mkdir src
+          (test -f composer.json && echo composer.json exists) || echo '{"name": "vice/project","autoload": {"psr-4": {"Vice\\\\Project\\\\": "src/"}},"require": {}}' > composer.json 
+      - name: Psalm
+        uses: docker://vimeo/psalm-github-actions
+        with:
+          # Psalm is set to not check for composer packages, we have dependabot for that.
+          composer_ignore_platform_reqs: true
+          security_analysis: true
+          report_file: results.sarif
+
+      # Psalm generates a sarif file for GHAS to analyze. The sarif file is uploaded to GHAS by the code below
+      - name: Upload Security Analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: results.sarif
+     
+#==========================================MOBILE(KOTLIN/OBJECTIVE-C/SWIFT)==========================================#
+  
+# If any languages for either android or iOS is detected by linguist this job, Mobsf, will run on the source code.
+  mobsf-job:
+    name: Mobsf Scan (Android/iOS)
+    needs: linguist-job
+    if: needs.linguist-job.outputs.has_mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v2
+      
+    - name: mobsfscan
+      uses: MobSF/mobsfscan@main
+      with:
+        args: '. --sarif --output results.sarif || true'
+    
+    # Mobsf generates a sarif file for GHAS to analyze. The sarif file is uploaded to GHAS by the code below
+    - name: Upload mobsfscan report
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: results.sarif
+        
