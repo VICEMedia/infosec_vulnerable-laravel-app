@@ -359,8 +359,8 @@ jobs:
 #=================================================PHP=================================================#
 
 # If PHP is detected by linguist this job, Psalm, will run on the source code.
-  psalm-job:
-    name: Psalm (PHP)
+  devskim-job:
+    name: DevSkim (PHP)
     needs: linguist-job
     if: needs.linguist-job.outputs.has_php == 'true'
     runs-on: ubuntu-latest
@@ -368,24 +368,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       
-      # Below code checks if the neccessary directories, for Psalm to work, exists
-      - name: Check if composer exist
-        run: |
-          (test -d src && echo src exists) || mkdir src
-          (test -f composer.json && echo composer.json exists) || echo '{"name": "vice/project","autoload": {"psr-4": {"Vice\\\\Project\\\\": "src/"}},"require": {}}' > composer.json 
-      - name: Psalm
-        uses: docker://vimeo/psalm-github-actions
+      - uses: microsoft/DevSkim-Action@v1
+      
+      - uses: github/codeql-action/upload-sarif@v1
         with:
-          # Psalm is set to not check for composer packages, we have dependabot for that.
-          composer_ignore_platform_reqs: true
-          security_analysis: true
-          report_file: results.sarif
-
-      # Psalm generates a sarif file for GHAS to analyze. The sarif file is uploaded to GHAS by the code below
-      - name: Upload Security Analysis results to GitHub
-        uses: github/codeql-action/upload-sarif@v1
-        with:
-          sarif_file: results.sarif
+          sarif_file: devskim-results.sarif
      
 #==========================================MOBILE(KOTLIN/OBJECTIVE-C/SWIFT)==========================================#
   
