@@ -4,7 +4,7 @@
 # Here is more information on how to use external config files: 
 # https://docs.github.com/en/code-security/code-scanning/using-codeql-code-scanning-with-your-existing-ci-system/configuring-codeql-runner-in-your-ci-system#using-a-custom-configuration-file
 
-# name: "CodeQL Config"
+name: "CodeQL Config"
 
-# paths-ignore: 
-#  - file/to/ignore.txt
+paths-ignore: 
+- public/js/app.js
