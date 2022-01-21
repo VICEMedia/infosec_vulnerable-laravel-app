@@ -359,20 +359,26 @@ jobs:
 #=================================================PHP=================================================#
 
 # If PHP is detected by linguist this job, Psalm, will run on the source code.
-  devskim-job:
-    name: DevSkim (PHP)
-    needs: linguist-job
-    if: needs.linguist-job.outputs.has_php == 'true'
+  semgrep-job:
+    name: Semgrep (PHP)
+    # needs: linguist-job
+    # if: needs.linguist-job.outputs.has_php == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
-      - uses: microsoft/DevSkim-Action@v1
-      
-      - uses: github/codeql-action/upload-sarif@v1
+
+      - uses: returntocorp/semgrep-action@v1
         with:
-          sarif_file: devskim-results.sarif
+          config: r/php 
+          auditOn: push
+          generateSarif: "1"
+
+      # Upload findings to GitHub Advanced Security Dashboard [step 2/2]
+      - name: Upload SARIF file for GitHub Advanced Security Dashboard
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: semgrep.sarif
      
 #==========================================MOBILE(KOTLIN/OBJECTIVE-C/SWIFT)==========================================#
   
